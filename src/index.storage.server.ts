@@ -1,33 +1,23 @@
-import net from "net";
-import log from "@ajar/marker";
+import express from "express";
+import path from "path";
 import fs from "fs";
 
-const server = net.createServer();
+const { cwd } = process;
 
-server.on("connection", (socket) => {
-  log.yellow("✨ client connected ✨");
+const app = express();
 
-  let stream: fs.WriteStream;
+app.use(express.json());
 
-  socket.on("data", (data) => {
-    try {
-      const json = JSON.parse(data.toString());
-      if (stream) stream.end();
-      stream = fs.createWriteStream(json.fileName, "utf-8");
-    } catch (err) {
-      stream.write(data);
-    }
-  });
-
-  socket.on("end", () => {
-    log.yellow("✨ client disconnected ✨");
-    stream.end();
-  });
+app.post("/", (req, res) => {
+  console.log(req.headers["file-name"] as string);
+  const filePath = path.join(
+    cwd(),
+    "files",
+    req.headers["file-name"] as string
+  );
+  const writeStream = fs.createWriteStream(filePath, "utf-8");
+  req.pipe(writeStream);
+  req.on("end", () => res.status(201).json({ message: "success" }));
 });
 
-server.on("error", (err) => {
-  log.error(err);
-  process.exit(1);
-});
-
-server.listen(3000, () => log.v("✨ ⚡Server is up  🚀"));
+app.listen(4000, () => console.log("listening 4000"));
